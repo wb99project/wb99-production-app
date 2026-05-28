@@ -71,6 +71,10 @@ It is designed to receive any JSON payload from an ESP32, broadcast it instantly
    ```bash
    gunicorn -k eventlet -w 1 app:app
    ```
+   If the Render runtime still reports a `pkg_resources` error, use this alternative start command instead:
+   ```bash
+   python app.py
+   ```
 4. Deploy the service.
 5. After deployment, use the public Render URL in your ESP32 code.
 
