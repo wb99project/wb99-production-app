@@ -1,26 +1,285 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>WB99 LIVE DATA</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
-  </head>
-  <body>
-    <div class="page-shell">
-      <h1>WB99 LIVE DATA</h1>
-      <div class="status-row">
-        <span>Connection:</span>
-        <strong id="connection-status">Connecting...</strong>
-      </div>
-
-      <div class="payload-panel">
-        <h2>Latest JSON payload</h2>
-        <pre id="live-payload">Waiting for data...</pre>
-      </div>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WB99 - Universal ESP32 Testing Platform</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: #000;
+            color: #0f0;
+            font-family: 'Courier New', monospace;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            font-size: 2em;
+            margin-bottom: 20px;
+            text-align: center;
+            border-bottom: 2px solid #0f0;
+            padding-bottom: 10px;
+        }
+        
+        .status-bar {
+            background: #111;
+            padding: 15px;
+            margin-bottom: 20px;
+            border: 1px solid #0f0;
+            border-radius: 5px;
+        }
+        
+        .status-item {
+            display: inline-block;
+            margin-right: 30px;
+        }
+        
+        .status-label {
+            color: #0a0;
+            font-weight: bold;
+        }
+        
+        .status-value {
+            color: #0f0;
+        }
+        
+        .connected {
+            color: #0f0;
+        }
+        
+        .disconnected {
+            color: #f00;
+        }
+        
+        .section {
+            background: #111;
+            border: 1px solid #0f0;
+            border-radius: 5px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .section-title {
+            font-size: 1.3em;
+            margin-bottom: 15px;
+            color: #0f0;
+            border-bottom: 1px solid #0a0;
+            padding-bottom: 5px;
+        }
+        
+        .data-display {
+            background: #000;
+            border: 1px solid #0a0;
+            padding: 15px;
+            border-radius: 3px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .empty-state {
+            color: #0a0;
+            font-style: italic;
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        
+        @media (max-width: 768px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .info-box {
+            background: #001100;
+            border: 1px solid #0a0;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 3px;
+        }
+        
+        .info-label {
+            color: #0a0;
+            font-weight: bold;
+            display: inline-block;
+            min-width: 150px;
+        }
+        
+        .info-value {
+            color: #0f0;
+        }
+        
+        .error {
+            color: #f00;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>WB99 - UNIVERSAL ESP32 TESTING PLATFORM</h1>
+        
+        <div class="status-bar">
+            <div class="status-item">
+                <span class="status-label">CONNECTION:</span>
+                <span class="status-value" id="connection-status">CONNECTING...</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">LAST UPDATE:</span>
+                <span class="status-value" id="last-update">Never</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">TOTAL RECEIVED:</span>
+                <span class="status-value" id="total-count">0</span>
+            </div>
+        </div>
+        
+        <div class="section">
+            <div class="section-title">REQUEST METADATA</div>
+            <div class="info-box">
+                <span class="info-label">Timestamp:</span>
+                <span class="info-value" id="timestamp">-</span>
+            </div>
+            <div class="info-box">
+                <span class="info-label">Method:</span>
+                <span class="info-value" id="method">-</span>
+            </div>
+            <div class="info-box">
+                <span class="info-label">Content-Type:</span>
+                <span class="info-value" id="content-type">-</span>
+            </div>
+            <div class="info-box">
+                <span class="info-label">Body Length:</span>
+                <span class="info-value" id="body-length">-</span>
+            </div>
+        </div>
+        
+        <div class="grid">
+            <div class="section">
+                <div class="section-title">RAW BODY</div>
+                <div class="data-display" id="raw-body">
+                    <span class="empty-state">Waiting for ESP32 data...</span>
+                </div>
+            </div>
+            
+            <div class="section">
+                <div class="section-title">PARSED JSON</div>
+                <div class="data-display" id="parsed-json">
+                    <span class="empty-state">Will display if payload is valid JSON</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="section">
+            <div class="section-title">HEADERS</div>
+            <div class="data-display" id="headers">
+                <span class="empty-state">Headers will appear here</span>
+            </div>
+        </div>
     </div>
-
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js" integrity="sha512-XkXl+Dh1VL+cofh3F0tCTMy+ZQ+zxBFn62h5EoI4Sb2wKIG6dQ4fPOsIr7X3NuwRII9+4aEED4KrsIqacTEnGw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
-  </body>
+    
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script>
+        // Initialize Socket.IO connection
+        const socket = io();
+        
+        let totalCount = 0;
+        
+        // Connection status handlers
+        socket.on('connect', () => {
+            console.log('[WB99] Connected to server');
+            updateConnectionStatus('CONNECTED', true);
+        });
+        
+        socket.on('disconnect', () => {
+            console.log('[WB99] Disconnected from server');
+            updateConnectionStatus('DISCONNECTED', false);
+        });
+        
+        socket.on('connection_status', (data) => {
+            console.log('[WB99] Connection status:', data);
+        });
+        
+        // Main data handler - receives ALL incoming ESP32 payloads
+        socket.on('new_data', (data) => {
+            console.log('[WB99] New data received:', data);
+            
+            totalCount++;
+            document.getElementById('total-count').textContent = totalCount;
+            
+            // Update timestamp
+            const timestamp = data.timestamp || 'Unknown';
+            document.getElementById('timestamp').textContent = timestamp;
+            document.getElementById('last-update').textContent = new Date(timestamp).toLocaleString();
+            
+            // Update metadata
+            document.getElementById('method').textContent = data.method || '-';
+            document.getElementById('content-type').textContent = data.content_type || '-';
+            document.getElementById('body-length').textContent = data.body_length + ' bytes' || '-';
+            
+            // Display raw body
+            const rawBodyEl = document.getElementById('raw-body');
+            if (data.raw_body) {
+                rawBodyEl.textContent = data.raw_body;
+                rawBodyEl.classList.remove('empty-state');
+            } else {
+                rawBodyEl.innerHTML = '<span class="empty-state">Empty body</span>';
+            }
+            
+            // Display parsed JSON or error
+            const parsedJsonEl = document.getElementById('parsed-json');
+            if (data.parsed_json) {
+                parsedJsonEl.textContent = JSON.stringify(data.parsed_json, null, 2);
+                parsedJsonEl.classList.remove('empty-state');
+            } else if (data.json_parse_error) {
+                parsedJsonEl.innerHTML = `<span class="error">JSON Parse Failed: ${escapeHtml(data.json_parse_error)}</span>`;
+            } else {
+                parsedJsonEl.innerHTML = '<span class="empty-state">Not JSON or empty</span>';
+            }
+            
+            // Display headers
+            const headersEl = document.getElementById('headers');
+            if (data.headers && Object.keys(data.headers).length > 0) {
+                headersEl.textContent = JSON.stringify(data.headers, null, 2);
+                headersEl.classList.remove('empty-state');
+            } else {
+                headersEl.innerHTML = '<span class="empty-state">No headers</span>';
+            }
+        });
+        
+        function updateConnectionStatus(status, connected) {
+            const statusEl = document.getElementById('connection-status');
+            statusEl.textContent = status;
+            statusEl.className = 'status-value ' + (connected ? 'connected' : 'disconnected');
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        // Auto-reconnect logic
+        socket.on('connect_error', (error) => {
+            console.error('[WB99] Connection error:', error);
+            updateConnectionStatus('ERROR - RETRYING...', false);
+        });
+    </script>
+</body>
 </html>
