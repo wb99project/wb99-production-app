@@ -1,120 +1,81 @@
 from flask import Flask, render_template, request, jsonify
 from flask_socketio import SocketIO, emit
-from datetime import datetime
+from datetime import datetime, timezone
 import json
 import os
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'wb99-universal-esp32-testing-platform'
-
-# Initialize SocketIO with CORS enabled for universal access
+app.config['SECRET_KEY'] = 'wb99-secret'
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
+
 
 @app.route('/')
 def index():
-    """Serve the live debugging dashboard"""
     return render_template('index.html')
+
 
 @app.route('/health')
 def health():
-    """Health check endpoint for monitoring"""
     return jsonify({"status": "ok"})
 
+
 @app.route('/api/live-data', methods=['POST'])
-def receive_live_data():
-    """
-    UNIVERSAL INGESTION ENDPOINT
-    Accepts ANY payload format:
-    - JSON
-    - Plain text
-    - CSV
-    - Binary-like
-    - Malformed data
-    - Unknown formats
-    
-    This is a discovery platform - we capture EVERYTHING.
-    """
-    
-    # Capture timestamp
-    timestamp = datetime.utcnow().isoformat() + 'Z'
-    
-    # Capture raw body data
+def live_data():
+    timestamp = datetime.now(timezone.utc).isoformat()
     raw_body = request.get_data(as_text=True)
-    
-    # Capture headers
     headers = dict(request.headers)
-    
-    # Capture content type
     content_type = request.content_type or 'unknown'
-    
-    # Capture method
-    method = request.method
-    
-    # Try to parse as JSON (safely)
+
     parsed_json = None
-    json_parse_error = None
-    
+    parse_error = None
     try:
         parsed_json = request.get_json(force=True, silent=False)
     except Exception as e:
-        json_parse_error = str(e)
-    
-    # Build comprehensive payload inspection object
-    inspection_data = {
+        parse_error = str(e)
+
+    payload = {
         'timestamp': timestamp,
-        'method': method,
+        'method': request.method,
         'content_type': content_type,
-        'headers': headers,
+        'body_length': len(raw_body) if raw_body else 0,
         'raw_body': raw_body,
         'parsed_json': parsed_json,
-        'json_parse_error': json_parse_error,
-        'body_length': len(raw_body) if raw_body else 0
+        'parse_error': parse_error,
+        'headers': headers,
     }
-    
-    # Print EVERYTHING to terminal for debugging
-    print("\n" + "="*80)
-    print(f"[WB99 INGESTION] {timestamp}")
-    print("="*80)
-    print(f"Method: {method}")
-    print(f"Content-Type: {content_type}")
-    print(f"Body Length: {inspection_data['body_length']} bytes")
-    print("-"*80)
-    print("HEADERS:")
-    for key, value in headers.items():
-        print(f"  {key}: {value}")
-    print("-"*80)
-    print("RAW BODY:")
-    print(raw_body)
-    print("-"*80)
-    if parsed_json:
-        print("PARSED JSON:")
+
+    print("\n" + "=" * 80)
+    print(f"[WB99] {timestamp}")
+    print(f"Content-Type : {content_type}")
+    print(f"Body Length  : {payload['body_length']} bytes")
+    print("--- HEADERS ---")
+    for k, v in headers.items():
+        print(f"  {k}: {v}")
+    print("--- RAW BODY ---")
+    print(raw_body if raw_body else "(empty)")
+    if parsed_json is not None:
+        print("--- PARSED JSON ---")
         print(json.dumps(parsed_json, indent=2))
     else:
-        print(f"JSON PARSE FAILED: {json_parse_error}")
-    print("="*80 + "\n")
-    
-    # Broadcast to all connected clients via Socket.IO
-    socketio.emit('new_data', inspection_data, broadcast=True)
-    
-    # Always return success - never crash on malformed data
-    return jsonify({
-        "status": "received",
-        "timestamp": timestamp,
-        "message": "Data captured and broadcast successfully"
-    }), 200
+        print(f"--- JSON PARSE ERROR: {parse_error} ---")
+    print("=" * 80 + "\n")
+
+    socketio.emit('new_data', payload)
+
+    return jsonify({"status": "received", "timestamp": timestamp}), 200
+
 
 @socketio.on('connect')
-def handle_connect():
-    """Handle client connection"""
+def on_connect():
     print(f"[WB99] Client connected: {request.sid}")
-    emit('connection_status', {'status': 'connected', 'message': 'Connected to WB99 platform'})
+    emit('connection_status', {'status': 'connected'})
+
 
 @socketio.on('disconnect')
-def handle_disconnect():
-    """Handle client disconnection"""
+def on_disconnect():
     print(f"[WB99] Client disconnected: {request.sid}")
 
+
 if __name__ == '__main__':
-    # Run with eventlet for production-like behavior
-    port = int(os.environ.get("PORT", 5000))
+    port = int(os.environ.get('PORT', 5000))
     socketio.run(app, host='0.0.0.0', port=port, debug=True)
