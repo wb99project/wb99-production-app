@@ -69,10 +69,6 @@ It is designed to receive any JSON payload from an ESP32, broadcast it instantly
 2. Create a new Web Service and select the WB99 repository.
 3. Set the start command to:
    ```bash
-   gunicorn -k eventlet -w 1 app:app
-   ```
-   If the Render runtime still reports a `pkg_resources` error, use this alternative start command instead:
-   ```bash
    python app.py
    ```
 4. Deploy the service.
