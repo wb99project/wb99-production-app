@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>WB99 LIVE DATA</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <h1>WB99 LIVE DATA</h1>
+      <div class="status-row">
+        <span>Connection:</span>
+        <strong id="connection-status">Connecting...</strong>
+      </div>
+
+      <div class="payload-panel">
+        <h2>Latest JSON payload</h2>
+        <pre id="live-payload">Waiting for data...</pre>
+      </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js" integrity="sha512-XkXl+Dh1VL+cofh3F0tCTMy+ZQ+zxBFn62h5EoI4Sb2wKIG6dQ4fPOsIr7X3NuwRII9+4aEED4KrsIqacTEnGw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+  </body>
+</html>
